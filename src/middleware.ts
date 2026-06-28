@@ -53,7 +53,10 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // Rate Limiting
   if (isApi) {
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown-ip';
-    const rateLimitConfig = pathname.startsWith('/api/v1/auth') ? RATE_LIMIT.AUTH : RATE_LIMIT.API;
+    const isStrictAuthRoute = ['/api/v1/auth/login', '/api/v1/auth/forgot-password', '/api/v1/auth/reset-password'].some(
+      (route) => pathname === route,
+    );
+    const rateLimitConfig = isStrictAuthRoute ? RATE_LIMIT.AUTH : RATE_LIMIT.API;
     const rateLimitResult = rateLimit(ip, rateLimitConfig);
 
     if (!rateLimitResult.success) {
