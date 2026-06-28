@@ -6,7 +6,6 @@ import {
   isPublicApiRoute,
   isPublicRoute,
 } from '@/constants/auth-routes';
-
 import { verifyAccessToken } from '@/services/auth/jwt.service';
 import type { UserRole } from '@/types/enums';
 
