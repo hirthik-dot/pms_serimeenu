@@ -6,7 +6,7 @@ import {
   isPublicApiRoute,
   isPublicRoute,
 } from '@/constants/auth-routes';
-import { rateLimit, RATE_LIMIT } from '@/lib/auth/rate-limit';
+
 import { verifyAccessToken } from '@/services/auth/jwt.service';
 import type { UserRole } from '@/types/enums';
 
@@ -50,31 +50,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const isApi = pathname.startsWith('/api/');
   const isPublic = isPublicRoute(pathname) || (isApi && isPublicApiRoute(pathname));
 
-  // Rate Limiting
-  if (isApi) {
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown-ip';
-    const isStrictAuthRoute = ['/api/v1/auth/login', '/api/v1/auth/forgot-password', '/api/v1/auth/reset-password'].some(
-      (route) => pathname === route,
-    );
-    const rateLimitConfig = isStrictAuthRoute ? RATE_LIMIT.AUTH : RATE_LIMIT.API;
-    const rateLimitResult = rateLimit(ip, rateLimitConfig);
 
-    if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { success: false, data: null, message: 'Too many requests', errors: [] },
-        {
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': rateLimitResult.limit.toString(),
-            'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
-            'X-RateLimit-Reset': rateLimitResult.reset.toString(),
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        },
-      );
-    }
-  }
-  
   // CSRF Protection for state-mutating API requests
   const method = request.method.toUpperCase();
   const isMutatingRequest = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
