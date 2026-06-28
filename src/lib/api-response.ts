@@ -74,7 +74,7 @@ export function errorResponse(error: unknown): NextResponse<ApiResponse<null>> {
       {
         success: false,
         data: null,
-        message: 'Validation failed',
+        message: `Validation failed: ${validationErrors.map((e) => `${e.field} (${e.message})`).join(', ')}`,
         errors: validationErrors,
       },
       { status: 400 },

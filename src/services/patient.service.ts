@@ -138,7 +138,7 @@ export class PatientService {
       throw new ConflictError('A patient with this phone number already exists');
     }
 
-    return withTransaction(async (session) => {
+    return withTransaction(async (session?) => {
       const hospitalId = await nextPatientId(PATIENT_ID.DEFAULT_PREFIX, session);
       const patient = await patientRepository.createPatient(
         {
@@ -281,7 +281,7 @@ export class PatientService {
     await patientRepository.findByIdOrThrow(primaryId, 'Patient');
     await patientRepository.findByIdOrThrow(duplicateId, 'Patient');
 
-    return withTransaction(async (session) => {
+    return withTransaction(async (session?) => {
       const duplicateObjectId = new Types.ObjectId(duplicateId);
 
       await Promise.all([
@@ -698,7 +698,7 @@ export class PatientService {
       throw new ConflictError('An active visit already exists for this patient today');
     }
 
-    return withTransaction(async (session) => {
+    return withTransaction(async (session?) => {
       const [visitNumber, visitCode, tokenNumber] = await Promise.all([
         nextVisitNumberForPatient(patientObjectId, session),
         nextVisitCode(session),

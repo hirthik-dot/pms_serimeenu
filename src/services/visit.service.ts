@@ -213,7 +213,7 @@ export class VisitService {
       }
     }
 
-    return withTransaction(async (session) => {
+    return withTransaction(async (session?) => {
       const [visitNumber, visitCode] = await Promise.all([
         nextVisitNumberForPatient(input.patientId, session),
         nextVisitCode(session),
