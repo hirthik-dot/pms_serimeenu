@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { AuthGuard, PermissionGate } from '@/components/auth/auth-guard';
+import { useAuth } from '@/providers/auth-provider';
+import { hasAnyPermission } from '@/services/auth/permission.service';
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,6 +60,10 @@ function StatCard({
 
 export default function BillingPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canCollectPayment = user
+    ? hasAnyPermission(user.permissions, ['payments:create', 'billing:create', 'billing:update'])
+    : false;
   const [selectedBill, setSelectedBill] = useState<BillDto | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState<PaymentMethod>(PaymentMethod.Cash);
@@ -148,6 +154,10 @@ export default function BillingPage() {
   };
 
   const selectBillForPayment = (bill: BillDto) => {
+    if (!canCollectPayment) {
+      toast.error('You do not have permission to record payments');
+      return;
+    }
     setSelectedBill(bill);
     setPayAmount(String(bill.balanceAmount));
   };
@@ -273,9 +283,7 @@ export default function BillingPage() {
                           <TableRow
                             key={bill.id}
                             className={`cursor-pointer ${selectedBill?.id === bill.id ? 'bg-muted/50' : 'hover:bg-muted/30'}`}
-                            onClick={() => {
-                              if (bill.balanceAmount > 0) selectBillForPayment(bill);
-                            }}
+                            onClick={() => selectBillForPayment(bill)}
                           >
                             <TableCell className="font-medium">{bill.billNumber}</TableCell>
                             <TableCell>{bill.patientName}</TableCell>
@@ -366,7 +374,8 @@ export default function BillingPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      You do not have permission to record payments.
+                      You do not have permission to record payments. Log out and log back in if
+                      your role was recently updated.
                     </p>
                   </CardContent>
                 </Card>
@@ -381,56 +390,62 @@ export default function BillingPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {selectedBill ? (
-                    <>
-                      <p className="text-sm">
-                        Bill <strong>{selectedBill.billNumber}</strong> — Balance ₹
-                        {selectedBill.balanceAmount.toLocaleString()}
+                    selectedBill.balanceAmount <= 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Bill <strong>{selectedBill.billNumber}</strong> is fully paid.
                       </p>
-                      <div className="space-y-1">
-                        <Label>Amount</Label>
-                        <Input value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Method</Label>
-                        <Select value={payMethod} onValueChange={(v) => setPayMethod(v as PaymentMethod)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.values(PaymentMethod).map((m) => (
-                              <SelectItem key={m} value={m}>{m.replace('_', ' ')}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Reference</Label>
-                        <Input
-                          value={payRef}
-                          onChange={(e) => setPayRef(e.target.value)}
-                          placeholder={
-                            payMethod === PaymentMethod.Cash || payMethod === PaymentMethod.Cheque
-                              ? 'Optional'
-                              : 'Required for Card / UPI / Bank Transfer'
-                          }
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        className="w-full"
-                        disabled={paymentMutation.isPending}
-                        onClick={recordPayment}
-                      >
-                        {paymentMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Recording...
-                          </>
-                        ) : (
-                          'Record Payment'
-                        )}
-                      </Button>
-                    </>
+                    ) : (
+                      <>
+                        <p className="text-sm">
+                          Bill <strong>{selectedBill.billNumber}</strong> — Balance ₹
+                          {selectedBill.balanceAmount.toLocaleString()}
+                        </p>
+                        <div className="space-y-1">
+                          <Label>Amount</Label>
+                          <Input value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Method</Label>
+                          <Select value={payMethod} onValueChange={(v) => setPayMethod(v as PaymentMethod)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.values(PaymentMethod).map((m) => (
+                                <SelectItem key={m} value={m}>{m.replace('_', ' ')}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Reference</Label>
+                          <Input
+                            value={payRef}
+                            onChange={(e) => setPayRef(e.target.value)}
+                            placeholder={
+                              payMethod === PaymentMethod.Cash || payMethod === PaymentMethod.Cheque
+                                ? 'Optional'
+                                : 'Required for Card / UPI / Bank Transfer'
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          className="w-full"
+                          disabled={paymentMutation.isPending}
+                          onClick={recordPayment}
+                        >
+                          {paymentMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Recording...
+                            </>
+                          ) : (
+                            'Record Payment'
+                          )}
+                        </Button>
+                      </>
+                    )
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       Click a bill row or the card icon to collect payment

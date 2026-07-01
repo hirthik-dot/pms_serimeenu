@@ -31,12 +31,14 @@ import {
   validatePasswordStrength,
   verifyPassword,
 } from '@/services/auth/password.service';
+import { resolveUserPermissions } from '@/services/auth/permission.server';
 import type { AuthContext, AuthUser, SessionOptions } from '@/types/auth';
 import { AuditAction, UserStatus } from '@/types/enums';
 import { getDocumentId } from '@/utils/mongoose';
 
-function toAuthUser(user: IUser & { _id?: { toString(): string } }): AuthUser {
+async function toAuthUser(user: IUser & { _id?: { toString(): string } }): Promise<AuthUser> {
   const id = '_id' in user && user._id ? user._id.toString() : String(user);
+  const permissions = await resolveUserPermissions(user);
   return {
     id,
     firstName: user.firstName,
@@ -45,12 +47,30 @@ function toAuthUser(user: IUser & { _id?: { toString(): string } }): AuthUser {
     phone: user.phone,
     role: user.role,
     status: user.status,
-    permissions: user.permissions,
+    permissions,
     avatar: user.avatar,
     lastLoginAt: user.lastLoginAt?.toISOString(),
     createdAt: user.createdAt?.toISOString?.() ?? undefined,
     updatedAt: user.updatedAt?.toISOString?.() ?? undefined,
   };
+}
+
+async function syncAndResolvePermissions(
+  user: IUser & { _id?: { toString(): string } },
+): Promise<string[]> {
+  const permissions = await resolveUserPermissions(user);
+  const stored = user.permissions ?? [];
+  const storedSet = new Set(stored);
+  const needsSync =
+    permissions.length !== stored.length || permissions.some((p) => !storedSet.has(p));
+
+  if (needsSync) {
+    await userRepository.updateById(getDocumentId(user), {
+      $set: { permissions },
+    });
+  }
+
+  return permissions;
 }
 
 export class AuthService {
@@ -103,6 +123,7 @@ export class AuthService {
     await userRepository.updateLastLogin(getDocumentId(user));
 
     const tokens = await this.issueTokens(user, ipAddress, userAgent, options.rememberMe);
+    const authUser = await toAuthUser(user);
 
     await auditLogRepository.create({
       userId: getDocumentId(user),
@@ -115,12 +136,12 @@ export class AuthService {
 
     return {
       user: {
-        id: getDocumentId(user),
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        permissions: user.permissions,
+        id: authUser.id,
+        firstName: authUser.firstName,
+        lastName: authUser.lastName,
+        email: authUser.email,
+        role: authUser.role,
+        permissions: authUser.permissions,
       },
       ...tokens,
     };
@@ -135,12 +156,13 @@ export class AuthService {
     const userId = getDocumentId(user);
     const familyId = crypto.randomUUID();
     const jti = crypto.randomUUID();
+    const permissions = await syncAndResolvePermissions(user);
 
     const accessToken = await signAccessToken({
       sub: userId,
       email: user.email,
       role: user.role,
-      permissions: user.permissions,
+      permissions,
       tokenVersion: user.tokenVersion,
     });
 
@@ -248,7 +270,7 @@ export class AuthService {
       sub: payload.sub,
       email: user.email,
       role: user.role,
-      permissions: user.permissions,
+      permissions: await resolveUserPermissions(user),
       tokenVersion: user.tokenVersion,
     });
 
@@ -291,11 +313,13 @@ export class AuthService {
       throw new ForbiddenError('Account is not active');
     }
 
+    const permissions = await resolveUserPermissions(user);
+
     return {
       userId: payload.sub,
       email: payload.email,
       role: payload.role,
-      permissions: payload.permissions,
+      permissions,
       tokenVersion: payload.tokenVersion,
     };
   }

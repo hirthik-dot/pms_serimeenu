@@ -12,6 +12,10 @@ export function sanitizeObject<T>(obj: T): T {
     return obj;
   }
 
+  if (obj instanceof Date) {
+    return obj;
+  }
+
   if (Array.isArray(obj)) {
     return obj.map((item) => sanitizeObject(item)) as unknown as T;
   }
@@ -27,6 +31,8 @@ export function sanitizeObject<T>(obj: T): T {
 
     if (typeof value === 'string') {
       result[key] = sanitizeString(value);
+    } else if (value instanceof Date) {
+      result[key] = value;
     } else if (value && typeof value === 'object') {
       result[key] = sanitizeObject(value);
     }

@@ -69,8 +69,10 @@ export class UserService {
       sortOrder: input.sortOrder,
     });
 
+    const users = await Promise.all(result.data.map((u) => toAuthUser(u)));
+
     return {
-      data: result.data.map((u) => stripSecrets(toAuthUser(u))),
+      data: users.map((u) => stripSecrets(u)),
       total: result.total,
       page: result.page,
       limit: result.limit,
@@ -81,7 +83,7 @@ export class UserService {
     await connectToDatabase();
     const user = await userRepository.findById(id);
     if (!user) throw new NotFoundError('User');
-    return stripSecrets(toAuthUser(user));
+    return stripSecrets(await toAuthUser(user));
   }
 
   async createUser(input: CreateUserInput): Promise<AuthUser> {
@@ -116,7 +118,7 @@ export class UserService {
       isDeleted: false,
     });
 
-    return stripSecrets(toAuthUser(user));
+    return stripSecrets(await toAuthUser(user));
   }
 
   async updateUser(id: string, input: UpdateUserInput): Promise<AuthUser> {
@@ -138,7 +140,7 @@ export class UserService {
     }
 
     const user = await userRepository.updateById(id, { $set: update }, 'User');
-    return stripSecrets(toAuthUser(user));
+    return stripSecrets(await toAuthUser(user));
   }
 
   async deleteUser(id: string): Promise<void> {

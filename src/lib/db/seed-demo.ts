@@ -65,15 +65,19 @@ export async function ensureDemoSeed(): Promise<void> {
   }
 
   for (const userDef of DEMO_USERS) {
-    const exists = await UserModel.exists({ email: userDef.email });
-    if (exists) continue;
-
     const roleDoc = await RoleModel.findOne({ name: userDef.role }).exec();
     if (!roleDoc) continue;
 
     const permissions = expandPermissionWildcards(
       DEFAULT_ROLE_PERMISSIONS[userDef.role] ?? [],
     );
+
+    const existing = await UserModel.findOne({ email: userDef.email }).exec();
+
+    if (existing) {
+      await UserModel.updateOne({ _id: existing._id }, { $set: { permissions } });
+      continue;
+    }
 
     await UserModel.create({
       firstName: userDef.firstName,

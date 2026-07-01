@@ -12,7 +12,7 @@ export class ProfileService {
     await connectToDatabase();
     const user = await userRepository.findById(userId);
     if (!user) throw new NotFoundError('User');
-    return toAuthUser(user);
+    return await toAuthUser(user);
   }
 
   async updateProfile(userId: string, input: UpdateProfileInput): Promise<AuthUser> {
@@ -27,7 +27,7 @@ export class ProfileService {
       success: true,
     });
 
-    return toAuthUser(user);
+    return await toAuthUser(user);
   }
 
   async updateAvatar(userId: string, avatarUrl: string): Promise<AuthUser> {
@@ -47,7 +47,7 @@ export class ProfileService {
       success: true,
     });
 
-    return toAuthUser(user);
+    return await toAuthUser(user);
   }
 }
 
