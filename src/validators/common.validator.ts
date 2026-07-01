@@ -92,6 +92,33 @@ export type PaginationInput = z.infer<typeof paginationSchema>;
 
 // ─── Address ────────────────────────────────────────────────────────────────
 
+/**
+ * Optional Indian phone number — empty or valid 10-digit.
+ */
+export const optionalPhoneSchema = z
+  .union([z.literal(''), z.string()])
+  .transform((val) => {
+    const trimmed = val.trim();
+    if (!trimmed) return undefined;
+    return trimmed.replace(/^\+91/, '');
+  })
+  .refine((val) => val === undefined || /^[6-9]\d{9}$/.test(val), 'Invalid phone number');
+
+/**
+ * Registration address — street required; other fields optional with defaults applied on save.
+ */
+export const registrationAddressSchema = z.object({
+  street: requiredStringSchema,
+  city: z.string().trim().optional(),
+  state: z.string().trim().optional(),
+  pincode: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^\d{6}$/.test(v), 'Pincode must be 6 digits'),
+  country: z.string().trim().default('India'),
+});
+
 export const addressSchema = z.object({
   street: requiredStringSchema,
   city: requiredStringSchema,

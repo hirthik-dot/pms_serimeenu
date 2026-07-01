@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60_000,
   });
 
   useEffect(() => {

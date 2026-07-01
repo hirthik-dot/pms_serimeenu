@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger';
 interface MongooseCache {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
+  listenersAttached?: boolean;
 }
 
 declare global {
@@ -18,8 +19,25 @@ if (!global.mongooseCache) {
   global.mongooseCache = cached;
 }
 
+if (!cached.listenersAttached) {
+  mongoose.connection.on('disconnected', () => {
+    cached.conn = null;
+    cached.promise = null;
+    logger.warn('MongoDB disconnected — cache cleared');
+  });
+  cached.listenersAttached = true;
+}
+
 export async function connectToDatabase(): Promise<typeof mongoose> {
-  if (cached.conn) {
+  const readyState = mongoose.connection.readyState;
+
+  // 0 = disconnected, 3 = disconnecting — drop stale cache and reconnect
+  if (cached.conn && readyState !== 1) {
+    cached.conn = null;
+    cached.promise = null;
+  }
+
+  if (cached.conn && readyState === 1) {
     return cached.conn;
   }
 

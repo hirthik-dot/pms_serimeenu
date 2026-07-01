@@ -111,7 +111,7 @@ export function PrescriptionBuilder({
 
   return (
     <div className="space-y-4" id="prescription-print-area">
-      <div className="flex items-center justify-between">
+      <div className="prescription-screen-only flex items-center justify-between">
         <h3 className="text-sm font-medium">Prescription Builder</h3>
         <Button type="button" variant="outline" size="sm" onClick={onPrint}>
           <Printer className="mr-1 h-4 w-4" />

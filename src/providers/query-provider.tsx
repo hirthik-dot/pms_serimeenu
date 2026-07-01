@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, type ReactNode } from 'react';
 
+import { DEFAULT_QUERY_OPTIONS } from '@/constants/query';
+
 interface QueryProviderProps {
   children: ReactNode;
 }
@@ -14,9 +16,8 @@ export function QueryProvider({ children }: QueryProviderProps) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 60 * 1000, // 5 minutes (data remains fresh)
-            gcTime: 15 * 60 * 1000, // 15 minutes (garbage collection)
-            refetchOnWindowFocus: false,
+            ...DEFAULT_QUERY_OPTIONS,
+            gcTime: 5 * 60 * 1000,
             retry: 1,
           },
         },

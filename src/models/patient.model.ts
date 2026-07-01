@@ -16,7 +16,7 @@ import {
   patientStatusEnum,
   patientTypeEnum,
 } from '@/models/shared.schemas';
-import { PatientStatus, PatientType } from '@/types/enums';
+import { PatientStatus, PatientType, ReferralSource } from '@/types/enums';
 import type { IPatient } from '@/types/models';
 
 export type PatientDocument = IPatient & Document;
@@ -29,7 +29,7 @@ const patientSchema = new Schema<IPatient>(
     lastName: { type: String, required: true, trim: true, maxlength: 100 },
     dateOfBirth: { type: Date, required: true },
     gender: { type: String, enum: genderEnum, required: true },
-    phone: { type: String, required: true, trim: true },
+    phone: { type: String, trim: true },
     email: { type: String, trim: true, lowercase: true },
     address: { type: addressSchema, required: true },
     bloodGroup: { type: String, enum: bloodGroupEnum },
@@ -41,6 +41,7 @@ const patientSchema = new Schema<IPatient>(
     patientType: { type: String, enum: patientTypeEnum, default: PatientType.Adult },
     pediatricInfo: { type: pediatricInfoSchema },
     consentGiven: { type: Boolean, default: false },
+    referredBy: { type: String, enum: Object.values(ReferralSource) },
     status: { type: String, enum: patientStatusEnum, default: PatientStatus.Active },
   },
   baseSchemaOptions,

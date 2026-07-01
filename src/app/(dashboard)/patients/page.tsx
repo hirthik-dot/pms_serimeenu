@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { LIVE_QUERY_OPTIONS } from '@/constants/query';
 import { patientApi } from '@/features/patients/api/patient-api';
 import { PatientTable } from '@/features/patients/components/patient-table';
 import { usePagination } from '@/hooks/use-pagination';
@@ -51,6 +52,7 @@ export default function PatientsPage() {
         sortBy: 'createdAt',
         sortOrder: 'desc',
       }),
+    ...LIVE_QUERY_OPTIONS,
   });
 
   const archiveMutation = useMutation({

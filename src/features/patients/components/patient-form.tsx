@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { BloodGroup, Gender, MaritalStatus, PatientType } from '@/types/enums';
+import { BloodGroup, Gender, MaritalStatus, PatientType, ReferralSource } from '@/types/enums';
 import type { PatientDetail } from '@/types/patient';
 import { calculateAge } from '@/utils/date';
 import {
@@ -42,6 +42,16 @@ const defaultAddress = {
   state: '',
   pincode: '',
   country: 'India',
+};
+
+const REFERRAL_LABELS: Record<ReferralSource, string> = {
+  [ReferralSource.Doctor]: 'Doctor',
+  [ReferralSource.Ads]: 'Ads',
+  [ReferralSource.Friend]: 'Friend',
+  [ReferralSource.SocialMedia]: 'Social Media',
+  [ReferralSource.WalkIn]: 'Walk-in',
+  [ReferralSource.Website]: 'Website',
+  [ReferralSource.Other]: 'Other',
 };
 
 function collectErrorMessages(errors: FieldErrors<PatientFormInput>, prefix = ''): string[] {
@@ -74,7 +84,7 @@ export function PatientForm({
       dateOfBirth: defaultValues?.dateOfBirth
         ? new Date(defaultValues.dateOfBirth)
         : undefined,
-      gender: (defaultValues?.gender as Gender) ?? Gender.Male,
+      gender: (defaultValues?.gender as Gender) ?? undefined,
       phone: defaultValues?.phone ?? '',
       email: defaultValues?.email ?? '',
       address: defaultValues?.address ?? defaultAddress,
@@ -88,6 +98,7 @@ export function PatientForm({
       },
       allergies: defaultValues?.allergies ?? [],
       notes: defaultValues?.notes ?? '',
+      referredBy: defaultValues?.referredBy as ReferralSource | undefined,
       patientType: defaultValues?.patientType ?? PatientType.Adult,
       pediatricInfo: defaultValues?.pediatricInfo ?? {},
       consentGiven: defaultValues?.consentGiven ?? false,
@@ -180,13 +191,13 @@ export function PatientForm({
             ) : null}
           </div>
           <div className="space-y-2">
-            <Label>Gender *</Label>
+            <Label>Gender</Label>
             <Select
-              value={form.watch('gender')}
+              value={form.watch('gender') ?? ''}
               onValueChange={(v) => form.setValue('gender', v as Gender)}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select (optional)" />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(Gender).map((g) => (
@@ -198,7 +209,7 @@ export function PatientForm({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone *</Label>
+            <Label htmlFor="phone">Phone</Label>
             <Input
               id="phone"
               {...form.register('phone')}
@@ -256,6 +267,26 @@ export function PatientForm({
             <Label htmlFor="occupation">Occupation</Label>
             <Input id="occupation" {...form.register('occupation')} />
           </div>
+          <div className="space-y-2">
+            <Label>Referred By</Label>
+            <Select
+              value={form.watch('referredBy') ?? ''}
+              onValueChange={(v) =>
+                form.setValue('referredBy', v ? (v as ReferralSource) : undefined)
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.values(ReferralSource).map((source) => (
+                  <SelectItem key={source} value={source}>
+                    {REFERRAL_LABELS[source]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
 
@@ -265,7 +296,7 @@ export function PatientForm({
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="street">Street</Label>
+            <Label htmlFor="street">Street *</Label>
             <Input id="street" {...form.register('address.street')} />
             {fieldError('address.street') ? (
               <p className="text-sm text-destructive">{fieldError('address.street')}</p>
@@ -306,7 +337,7 @@ export function PatientForm({
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="parentName">Parent Name *</Label>
+              <Label htmlFor="parentName">Parent Name</Label>
               <Input id="parentName" {...form.register('pediatricInfo.parentName')} />
             </div>
             <div className="space-y-2">
@@ -381,8 +412,11 @@ export function PatientForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="chiefComplaint">Chief Complaint / Notes</Label>
-            <Textarea id="chiefComplaint" {...form.register('notes')} />
+            <Label htmlFor="chiefComplaint">Chief Complaint *</Label>
+            <Textarea id="chiefComplaint" {...form.register('notes')} placeholder="Describe the primary reason for visit" />
+            {fieldError('notes') ? (
+              <p className="text-sm text-destructive">{fieldError('notes')}</p>
+            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -397,12 +431,9 @@ export function PatientForm({
             />
             <span className="text-sm">
               I consent to treatment and authorize the clinic to store my medical information
-              in accordance with privacy regulations. *
+              in accordance with privacy regulations.
             </span>
           </label>
-          {fieldError('consentGiven') ? (
-            <p className="mt-2 text-sm text-destructive">{fieldError('consentGiven')}</p>
-          ) : null}
         </CardContent>
       </Card>
 

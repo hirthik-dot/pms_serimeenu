@@ -65,6 +65,16 @@ export enum MaritalStatus {
   Widowed = 'widowed',
 }
 
+export enum ReferralSource {
+  Doctor = 'doctor',
+  Ads = 'ads',
+  Friend = 'friend',
+  SocialMedia = 'social_media',
+  WalkIn = 'walk_in',
+  Website = 'website',
+  Other = 'other',
+}
+
 // ─── Appointment ────────────────────────────────────────────────────────────
 
 export enum AppointmentStatus {

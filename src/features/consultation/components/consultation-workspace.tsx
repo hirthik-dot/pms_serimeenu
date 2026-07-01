@@ -183,8 +183,11 @@ export function ConsultationWorkspace({ visitId }: ConsultationWorkspaceProps) {
       toast.error(e instanceof ApiClientError ? e.message : 'Request failed'),
   });
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    await saveNow();
+    document.body.classList.add('print-prescription');
     window.print();
+    document.body.classList.remove('print-prescription');
   };
 
   useConsultationKeyboard({
@@ -285,6 +288,7 @@ export function ConsultationWorkspace({ visitId }: ConsultationWorkspaceProps) {
                 onPrescriptionChange={(meds, instructions) => {
                   setPrescriptionMeds(meds);
                   setPrescriptionInstructions(instructions);
+                  markUnsaved();
                 }}
                 onPrintPrescription={handlePrint}
                 treatmentPlanName={planName}
@@ -294,6 +298,7 @@ export function ConsultationWorkspace({ visitId }: ConsultationWorkspaceProps) {
                   setPlanName(name);
                   setPlanDescription(description);
                   setPlanItems(items);
+                  markUnsaved();
                 }}
                 consultation={workspace.consultation}
               />

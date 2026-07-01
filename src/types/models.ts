@@ -18,6 +18,7 @@ import type {
   MaritalStatus,
   PatientStatus,
   PatientType,
+  ReferralSource,
   MedicationDuration,
   MedicationFrequency,
   MedicineRoute,
@@ -205,6 +206,7 @@ export interface IPatient extends IBaseFields {
   patientType: PatientType;
   pediatricInfo?: IPediatricInfo;
   consentGiven: boolean;
+  referredBy?: ReferralSource;
   status: PatientStatus;
 }
 

@@ -4,7 +4,13 @@ import { PatientModel } from '@/models/patient.model';
 import { PaymentModel } from '@/models/payment.model';
 import { VisitModel } from '@/models/visit.model';
 import { appointmentRepository } from '@/repositories/appointment.repository';
+import { prescriptionRepository } from '@/repositories/consultation.repository';
+import { patientRepository } from '@/repositories/patient.repository';
+import { billService } from '@/services/bill.service';
+import { patientService } from '@/services/patient.service';
 import { BillStatus, PatientStatus, PatientType, VisitStatus } from '@/types/enums';
+import type { IPrescription } from '@/types/models';
+import { getDocumentId } from '@/utils/mongoose';
 
 export interface ExecutiveDashboardData {
   revenue: {
@@ -204,6 +210,79 @@ class ReportService {
 
     return { byDoctor };
   }
+
+  async getPatientRecords(page = 1, limit = 25, search?: string) {
+    await connectToDatabase();
+    const result = await patientRepository.search({
+      page,
+      limit,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+      search,
+    });
+
+    return {
+      data: result.data.map((p) => ({
+        id: getDocumentId(p),
+        patientId: p.patientId,
+        fullName: `${p.firstName} ${p.lastName}`.trim(),
+        phone: p.phone,
+        dateOfBirth: new Date(p.dateOfBirth).toISOString(),
+        gender: p.gender,
+        referredBy: p.referredBy,
+        notes: p.notes,
+        status: p.status,
+        createdAt: new Date(p.createdAt).toISOString(),
+      })),
+      total: result.meta.total,
+      page: result.meta.page,
+      limit: result.meta.limit,
+    };
+  }
+
+  async getPatientRecordDetail(patientId: string) {
+    await connectToDatabase();
+
+    const [patient, billsResult, prescriptions] = await Promise.all([
+      patientService.getPatient(patientId),
+      billService.listBills({ patientId, page: 1, limit: 100, sortOrder: 'desc' }),
+      prescriptionRepository.findByPatientId(patientId, 50),
+    ]);
+
+    if (!patient) {
+      return null;
+    }
+
+    return {
+      patient,
+      bills: billsResult.data,
+      prescriptions: prescriptions.map((rx) => mapPrescriptionSummary(rx)),
+    };
+  }
 }
 
 export const reportService = new ReportService();
+
+function mapPrescriptionSummary(rx: IPrescription) {
+  const doctor =
+    typeof rx.doctorId === 'object' && rx.doctorId && 'firstName' in rx.doctorId
+      ? rx.doctorId as { firstName?: string; lastName?: string }
+      : null;
+
+  return {
+    id: getDocumentId(rx),
+    date: new Date(rx.createdAt).toISOString(),
+    doctorName: doctor ? `Dr. ${doctor.firstName ?? ''} ${doctor.lastName ?? ''}`.trim() : 'N/A',
+    medications: rx.medications.map((m) => ({
+      name: m.name,
+      dosage: m.dosage,
+      frequency: m.frequency,
+      duration: m.duration,
+      durationUnit: m.durationUnit,
+      instructions: m.instructions,
+    })),
+    generalInstructions: rx.generalInstructions,
+    followUpDate: rx.followUpDate ? new Date(rx.followUpDate).toISOString() : undefined,
+    status: rx.status,
+  };
+}

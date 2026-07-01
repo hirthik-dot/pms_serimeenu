@@ -10,13 +10,16 @@ import {
   MaritalStatus,
   PatientStatus,
   PatientType,
+  ReferralSource,
 } from '@/types/enums';
 import {
   addressSchema,
   emailSchema,
   objectIdSchema,
+  optionalPhoneSchema,
   paginationSchema,
   phoneSchema,
+  registrationAddressSchema,
   requiredStringSchema,
 } from '@/validators/common.validator';
 import { emergencyContactSchema, medicalHistorySchema } from '@/validators/models.validator';
@@ -53,106 +56,109 @@ const basePatientSchema = z.object({
   firstName: requiredStringSchema.max(100),
   lastName: requiredStringSchema.max(100),
   dateOfBirth: dateOfBirthSchema,
-  gender: enumSchema(Gender),
-  phone: phoneSchema,
+  gender: enumSchema(Gender).default(Gender.PreferNotToSay),
+  phone: optionalPhoneSchema,
   email: emailSchema.optional(),
   address: addressSchema,
   bloodGroup: enumSchema(BloodGroup).optional(),
   maritalStatus: enumSchema(MaritalStatus).optional(),
   occupation: z.string().trim().max(100).optional(),
-  emergencyContact: emergencyContactSchema,
+  emergencyContact: emergencyContactSchema.optional(),
   allergies: z.array(z.string().trim()).max(50).default([]),
-  notes: z.string().trim().max(2000).optional(),
+  notes: requiredStringSchema.max(2000),
   patientType: enumSchema(PatientType).default(PatientType.Adult),
   pediatricInfo: pediatricInfoSchema.optional(),
-  consentGiven: z.boolean().refine((val) => val === true, 'Consent is required'),
+  consentGiven: z.boolean().default(false),
+  referredBy: enumSchema(ReferralSource).optional(),
   medicalFlags: medicalFlagsSchema.optional(),
   medicalHistory: medicalHistorySchema.optional(),
 });
 
-function pediatricRefinement(data: z.infer<typeof basePatientSchema>, ctx: z.RefinementCtx) {
-  if (data.patientType === PatientType.Pediatric) {
-    if (!data.pediatricInfo?.parentName && !data.pediatricInfo?.guardianName) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Parent or guardian name is required for pediatric patients',
-        path: ['pediatricInfo', 'guardianName'],
-      });
-    }
-  }
-}
-
-export const createPatientSchema = basePatientSchema.superRefine(pediatricRefinement);
+export const createPatientSchema = basePatientSchema;
 
 /** Client form schema — uses fullName instead of separate first/last name fields */
-export const patientFormSchema = z
-  .object({
-    fullName: requiredStringSchema.max(200),
-    dateOfBirth: dateOfBirthSchema,
-    gender: enumSchema(Gender),
-    phone: phoneSchema,
-    email: z
-      .string()
-      .trim()
-      .optional()
-      .refine((v) => !v || z.string().email().safeParse(v).success, 'Invalid email address'),
-    address: addressSchema,
-    bloodGroup: enumSchema(BloodGroup).optional(),
-    maritalStatus: enumSchema(MaritalStatus).optional(),
-    occupation: z.string().trim().max(100).optional(),
-    emergencyContact: z
-      .object({
-        name: z.string().trim().optional(),
-        relationship: z.string().trim().optional(),
-        phone: z.string().trim().optional(),
-      })
-      .optional(),
-    allergies: z.array(z.string().trim()).max(50).default([]),
-    notes: z.string().trim().max(2000).optional(),
-    patientType: enumSchema(PatientType).default(PatientType.Adult),
-    pediatricInfo: z
-      .object({
-        parentName: z.string().trim().max(100).optional(),
-        guardianName: z.string().trim().max(100).optional(),
-        schoolName: z.string().trim().max(150).optional(),
-        pediatrician: z.string().trim().max(100).optional(),
-        height: z.union([z.number().min(0).max(300), z.nan()]).optional(),
-        weight: z.union([z.number().min(0).max(500), z.nan()]).optional(),
-      })
-      .optional(),
-    consentGiven: z.boolean().refine((val) => val === true, 'Consent is required'),
-    medicalFlags: medicalFlagsSchema.optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.patientType === PatientType.Pediatric) {
-      if (!data.pediatricInfo?.parentName && !data.pediatricInfo?.guardianName) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Parent or guardian name is required for pediatric patients',
-          path: ['pediatricInfo', 'guardianName'],
-        });
-      }
-    }
-  });
+export const patientFormSchema = z.object({
+  fullName: requiredStringSchema.max(200),
+  dateOfBirth: dateOfBirthSchema,
+  gender: enumSchema(Gender).optional(),
+  phone: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^(\+91)?[6-9]\d{9}$/.test(v), 'Invalid phone number'),
+  email: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || z.string().email().safeParse(v).success, 'Invalid email address'),
+  address: registrationAddressSchema,
+  bloodGroup: enumSchema(BloodGroup).optional(),
+  maritalStatus: enumSchema(MaritalStatus).optional(),
+  occupation: z.string().trim().max(100).optional(),
+  emergencyContact: z
+    .object({
+      name: z.string().trim().optional(),
+      relationship: z.string().trim().optional(),
+      phone: z.string().trim().optional(),
+    })
+    .optional(),
+  allergies: z.array(z.string().trim()).max(50).default([]),
+  notes: requiredStringSchema.max(2000),
+  patientType: enumSchema(PatientType).default(PatientType.Adult),
+  pediatricInfo: z
+    .object({
+      parentName: z.string().trim().max(100).optional(),
+      guardianName: z.string().trim().max(100).optional(),
+      schoolName: z.string().trim().max(150).optional(),
+      pediatrician: z.string().trim().max(100).optional(),
+      height: z.union([z.number().min(0).max(300), z.nan()]).optional(),
+      weight: z.union([z.number().min(0).max(500), z.nan()]).optional(),
+    })
+    .optional(),
+  consentGiven: z.boolean().default(false),
+  referredBy: enumSchema(ReferralSource).optional(),
+  medicalFlags: medicalFlagsSchema.optional(),
+});
 
 export type PatientFormInput = z.infer<typeof patientFormSchema>;
 
+function normalizeRegistrationAddress(
+  address: z.infer<typeof registrationAddressSchema>,
+): z.infer<typeof addressSchema> {
+  return {
+    street: address.street,
+    city: address.city?.trim() || '-',
+    state: address.state?.trim() || '-',
+    pincode: address.pincode?.trim() || '000000',
+    country: address.country?.trim() || 'India',
+  };
+}
+
+function normalizePhone(phone?: string): string | undefined {
+  if (!phone?.trim()) return undefined;
+  return phone.replace(/^\+91/, '');
+}
+
 export function formValuesToCreatePatientInput(values: PatientFormInput): CreatePatientInput {
   const { firstName, lastName } = splitFullName(values.fullName);
+  const phone = normalizePhone(values.phone);
 
-  const emergencyContact =
-    values.emergencyContact?.name?.trim()
-      ? {
-          name: values.emergencyContact.name.trim(),
-          relationship: values.emergencyContact.relationship?.trim() || 'Contact',
-          phone:
-            values.emergencyContact.phone?.replace(/\D/g, '').slice(-10) || values.phone,
-        }
-      : {
-          name: `${firstName} ${lastName}`.trim(),
-          relationship: 'Self',
-          phone: values.phone,
-        };
+  const emergencyContact = (() => {
+    const name = values.emergencyContact?.name?.trim();
+    if (!name) return undefined;
+
+    const ecPhone = values.emergencyContact?.phone?.replace(/\D/g, '').slice(-10);
+    const validEcPhone = ecPhone && /^[6-9]\d{9}$/.test(ecPhone) ? ecPhone : undefined;
+    const fallbackPhone = phone && /^[6-9]\d{9}$/.test(phone) ? phone : undefined;
+
+    if (!validEcPhone && !fallbackPhone) return undefined;
+
+    return {
+      name,
+      relationship: values.emergencyContact?.relationship?.trim() || 'Contact',
+      phone: validEcPhone || fallbackPhone!,
+    };
+  })();
 
   const pediatricInfo =
     values.patientType === PatientType.Pediatric && values.pediatricInfo
@@ -167,10 +173,10 @@ export function formValuesToCreatePatientInput(values: PatientFormInput): Create
     firstName,
     lastName,
     dateOfBirth: values.dateOfBirth,
-    gender: values.gender,
-    phone: values.phone,
+    gender: values.gender ?? Gender.PreferNotToSay,
+    phone,
     email: values.email || undefined,
-    address: values.address,
+    address: normalizeRegistrationAddress(values.address),
     bloodGroup: values.bloodGroup,
     maritalStatus: values.maritalStatus,
     occupation: values.occupation || undefined,
@@ -179,7 +185,8 @@ export function formValuesToCreatePatientInput(values: PatientFormInput): Create
     notes: values.notes,
     patientType: values.patientType,
     pediatricInfo,
-    consentGiven: values.consentGiven,
+    consentGiven: values.consentGiven ?? false,
+    referredBy: values.referredBy,
     medicalFlags: values.medicalFlags,
   };
 }

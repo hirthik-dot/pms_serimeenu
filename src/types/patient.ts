@@ -32,6 +32,7 @@ export interface PatientDetail extends PatientSummary {
   occupation?: string;
   allergies: string[];
   notes?: string;
+  referredBy?: string;
   pediatricInfo?: IPatient['pediatricInfo'];
   consentGiven: boolean;
   emergencyContact?: {
@@ -119,6 +120,7 @@ export function mapPatientDetail(
     occupation: patient.occupation,
     allergies: patient.allergies ?? [],
     notes: patient.notes,
+    referredBy: patient.referredBy,
     pediatricInfo: patient.pediatricInfo,
     consentGiven: patient.consentGiven,
     emergencyContact: emergencyContact

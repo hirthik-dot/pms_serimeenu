@@ -5,22 +5,28 @@ import { useEffect } from 'react';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/providers/auth-provider';
-import { hasPermission } from '@/services/auth/permission.service';
+import { hasAnyPermission, hasPermission } from '@/services/auth/permission.service';
 
 interface PermissionGateProps {
-  permission: string;
+  permission: string | string[];
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }
 
 export function PermissionGate({ permission, children, fallback = null }: PermissionGateProps) {
   const { user, isLoading } = useAuth();
+  const permissions = Array.isArray(permission) ? permission : [permission];
+  const allowed = user
+    ? permissions.length === 1
+      ? hasPermission(user.permissions, permissions[0]!)
+      : hasAnyPermission(user.permissions, permissions)
+    : false;
 
   if (isLoading) {
     return <Skeleton className="h-8 w-full" />;
   }
 
-  if (!user || !hasPermission(user.permissions, permission)) {
+  if (!user || !allowed) {
     return <>{fallback}</>;
   }
 

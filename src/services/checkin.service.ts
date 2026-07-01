@@ -58,6 +58,7 @@ export class CheckinService {
       occupation: input.occupation,
       emergencyContact: input.emergencyContact,
       allergies: input.allergies,
+      notes: input.chiefComplaint,
       patientType: input.patientType,
       pediatricInfo: input.pediatricInfo,
       consentGiven: input.consentGiven,

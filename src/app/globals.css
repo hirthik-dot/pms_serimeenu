@@ -98,3 +98,58 @@ body {
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
+
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  body.print-prescription * {
+    visibility: hidden;
+  }
+
+  body.print-prescription #prescription-print-area,
+  body.print-prescription #prescription-print-area * {
+    visibility: visible;
+  }
+
+  body.print-prescription #prescription-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+    color: black;
+  }
+
+  body.print-report * {
+    visibility: hidden;
+  }
+
+  body.print-report #patient-record-print,
+  body.print-report #patient-record-print *,
+  body.print-report #prescription-print,
+  body.print-report #prescription-print * {
+    visibility: visible;
+  }
+
+  body.print-report #patient-record-print,
+  body.print-report #prescription-print {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+    color: black;
+  }
+
+  .prescription-screen-only {
+    display: none !important;
+  }
+}
+
+.print-only {
+  display: none;
+}

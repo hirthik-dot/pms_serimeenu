@@ -134,7 +134,7 @@ export class PatientService {
   async createPatient(input: CreatePatientInput, createdBy?: string) {
     await connectToDatabase();
 
-    if (await patientRepository.phoneExists(input.phone)) {
+    if (input.phone && (await patientRepository.phoneExists(input.phone))) {
       throw new ConflictError('A patient with this phone number already exists');
     }
 
@@ -158,6 +158,7 @@ export class PatientService {
           patientType: input.patientType,
           pediatricInfo: input.pediatricInfo,
           consentGiven: input.consentGiven,
+          referredBy: input.referredBy,
           status: PatientStatus.Active,
           isDeleted: false,
           createdBy: createdBy ? new Types.ObjectId(createdBy) : undefined,
@@ -167,11 +168,13 @@ export class PatientService {
 
       const patientObjectId = getDocumentId(patient);
 
-      await emergencyContactRepository.upsertForPatient(
-        patientObjectId,
-        input.emergencyContact,
-        session,
-      );
+      if (input.emergencyContact) {
+        await emergencyContactRepository.upsertForPatient(
+          patientObjectId,
+          input.emergencyContact,
+          session,
+        );
+      }
 
       const conditions = buildConditionsFromFlags(input.medicalFlags);
       const historyData: Partial<IMedicalHistory> = {
